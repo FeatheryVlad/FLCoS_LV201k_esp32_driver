@@ -8,6 +8,10 @@
 #include <inttypes.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "esp_timer.h"
+#include "esp_lcd_panel_ops.h"
+#include "esp_lcd_panel_rgb.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_log.h"
@@ -16,6 +20,7 @@
 #include <driver/spi_master.h>
 #include <driver/gpio.h>
 #include <driver/ledc.h>
+#include "lvgl.h"
 
 typedef struct {
   uint8_t cmd;

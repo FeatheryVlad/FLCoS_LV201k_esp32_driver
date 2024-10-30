@@ -19,5 +19,5 @@ static const char *TAG = "_MAIN";
 void app_main(void)
 {
   esp_err_t ret;
-  lvd_initialize(PIN_NUM_CLK, PIN_NUM_MOSI, PIN_NUM_MISO);
+  lvd_initialize(PIN_NUM_SCLK, PIN_NUM_MOSI, PIN_NUM_MISO);
 }
