@@ -57,13 +57,13 @@ esp_err_t lvd_SPI_write(uint8_t address, uint8_t sendData, int csPin){
     .flags = 0
   };
   //memset(&trans_desc, 0, sizeof(trans_desc));
+  ret = spi_device_transmit(spi, &trans_desc);
   #ifdef DEBUG
     printf("%d\n", txData[1]);
-    printf("%d\n", rxData[0]);
-    printf("%d\n", rxData[1]);
-    printf("%d\n", rxData[2]);
+    //printf("%d\n", rxData[0]);
+    //printf("%d\n", rxData[1]);
+    //printf("%d\n", rxData[2]);
   #endif
-  ret = spi_device_transmit(spi, &trans_desc);
   //gpio_set_level(csPin, 1);
   return ret;
 }
@@ -96,6 +96,7 @@ void lvd_spi_task(void *arg){
     ESP_LOGI(TAG, "Recv str");
     for (uint8_t i = 0; i < 16; i++){
       ESP_ERROR_CHECK(lvd_SPI_read(i, PIN_NUM_CS));
+      vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
@@ -109,15 +110,6 @@ void lvd_initialize(int spiCLK, int spiMOSI, int spiMISO){
     .pull_up_en = true
   };
   gpio_config(&io_conf);
-
-  ESP_ERROR_CHECK(lvd_init_spi(spiCLK, spiMOSI, spiMISO, PIN_NUM_CS));
-
-  //Reset the display
-  gpio_set_level(PIN_NUM_RST, 0);
-  vTaskDelay(100 / portTICK_PERIOD_MS);
-  gpio_set_level(PIN_NUM_RST, 1);
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-
   ledc_timer_config_t ledc_timer = {
     .speed_mode = LEDC_MODE,
     .duty_resolution = LEDC_DUTY_RES,
@@ -138,69 +130,23 @@ void lvd_initialize(int spiCLK, int spiMOSI, int spiMISO){
   };
   ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 
+  //Reset the display
+  gpio_set_level(PIN_NUM_RST, 0);
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  gpio_set_level(PIN_NUM_RST, 1);
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+  ESP_ERROR_CHECK(lvd_init_spi(spiCLK, spiMOSI, spiMISO, PIN_NUM_CS));
+
   uint8_t cmd = 0;
   gpio_set_level(PIN_NUM_CS, 1);
   ESP_LOGI(TAG, "start Recv");
   while (preset_lvd_regs[cmd].databytes != 0xff){
     (lvd_SPI_write(preset_lvd_regs[cmd].cmd, preset_lvd_regs[cmd].data, PIN_NUM_CS));
-  //vTaskDelay(10 / portTICK_PERIOD_MS);
     cmd++;
   }
   ESP_LOGI(TAG, "pre end Recv");
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   ESP_LOGI(TAG, "end Recv");
-/**
- * 
-reg0: 0
-reg1: 5
-reg2: C0
-reg3: FF
-reg4: 0
-reg5: 0
-reg6: 48
-reg7: 4
-reg8: D6
-reg9: 5
-regA: DE
-regB: E
-regC: 1
-regD: 0
-regE: 0
-regF: 0
-
-reg0: 0
-reg1: 5
-reg2: C0
-reg3: FF
-reg4: 8
-reg5: 0
-reg6: 48
-reg7: 4
-reg8: D6
-reg9: 5
-regA: DE
-regB: E
-regC: 1
-regD: 0
-regE: 0
-regF: 0
-
-reg0: 1
-reg1: 10
-reg2: 0
-reg3: FF
-reg4: 8
-reg5: 0
-reg6: 48
-reg7: 4
-reg8: D6
-reg9: 5
-regA: DE
-regB: E
-regC: 1
-regD: 0
-regE: 0
-regF: 0
- */
   xTaskCreate(lvd_spi_task, "lvd_spi_task", 2048*3, NULL, 1, NULL);
 }
