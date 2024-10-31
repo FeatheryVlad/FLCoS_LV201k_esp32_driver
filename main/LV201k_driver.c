@@ -201,7 +201,10 @@ int box_size = 10;
 int x_velocity=1;
 int y_velocity=1;
 
-void lvd_initialize(int spiCLK, int spiMOSI, int spiMISO){
+#define TEST_IMG_SIZE (100 * 100 * sizeof(uint16_t))
+
+//void lvd_initialize(int spiCLK, int spiMOSI, int spiMISO){
+void app_main(void){
   gpio_config_t io_conf = {
     .pin_bit_mask = ((1ULL << PIN_NUM_RST) | (1ULL << PIN_NUM_CS)),
     .mode = GPIO_MODE_OUTPUT,
@@ -234,7 +237,7 @@ void lvd_initialize(int spiCLK, int spiMOSI, int spiMISO){
   gpio_set_level(PIN_NUM_RST, 1);
   vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-  ESP_ERROR_CHECK(lvd_init_spi(spiCLK, spiMOSI, spiMISO, PIN_NUM_CS));
+  ESP_ERROR_CHECK(lvd_init_spi(PIN_NUM_SCLK, PIN_NUM_MOSI, PIN_NUM_MISO, PIN_NUM_CS));
 
   uint8_t cmd = 0;
   gpio_set_level(PIN_NUM_CS, 1);
@@ -270,9 +273,10 @@ void lvd_initialize(int spiCLK, int spiMOSI, int spiMISO){
   esp_lcd_panel_handle_t panel_handle = NULL;
   esp_lcd_rgb_panel_config_t panel_config = {
       .data_width = 8, // RGB565 in parallel mode, thus 16bit in width
-      //.psram_trans_align = 64,
-      //.num_fbs = EXAMPLE_LCD_NUM_FB,
-      .clk_src = LCD_CLK_SRC_DEFAULT,
+      .bits_per_pixel = 22,
+      .psram_trans_align = 64,
+      .num_fbs = 1,
+      .clk_src = LCD_CLK_SRC_PLL160M,
       .disp_gpio_num = PIN_NUM_VALID,
       .pclk_gpio_num = PIN_NUM_PCLK,
       .vsync_gpio_num = PIN_NUM_VSYNC,
@@ -299,9 +303,10 @@ void lvd_initialize(int spiCLK, int spiMOSI, int spiMISO){
           .hsync_front_porch = 572,
           .hsync_pulse_width = 126,
           .hsync_back_porch = 118,
+            .flags.pclk_active_neg = true,
           //.flags.pclk_active_neg = true,
       },
-      .flags.fb_in_psram = true, // allocate frame buffer in PSRAM
+      .flags.fb_in_psram = false, // allocate frame buffer in PSRAM
   };
   ESP_ERROR_CHECK(esp_lcd_new_rgb_panel(&panel_config, &panel_handle));
   //ESP_LOGI(TAG, "Register event callbacks");
@@ -345,10 +350,13 @@ void lvd_initialize(int spiCLK, int spiMOSI, int spiMISO){
     int size = (box_size+1) * (box_size+1) * sizeof(lv_color_t);
 
 
+    uint8_t *img = malloc(TEST_IMG_SIZE);
     while (1) {
 
         for (int i=0; i<50; i++) {
-            esp_lcd_panel_draw_bitmap(panel_handle, x-box_size/2, y-box_size/2, x-box_size/2+box_size+1, y-box_size/2+box_size+1, my_color_map1);
+            //memset(img, my_color_map1, TEST_IMG_SIZE);
+            ESP_LOGI(TAG, "x: %d, y: %d, x1: %d, y1: %d, color: %d, i: %d", x-box_size/2, y-box_size/2, x-box_size/2+box_size+1, y-box_size/2+box_size+1, color,i );
+            ESP_ERROR_CHECK(esp_lcd_panel_draw_bitmap(panel_handle, x-box_size/2, y-box_size/2, x-box_size/2+box_size+1, y-box_size/2+box_size+1, my_color_map1));
             // ESP_LOGI(TAG, "finished copy");
             if ( (x < box_size/2+5) || (x > LCD_H_RES- box_size/2-5) ) {
                 x_velocity *= -1;
@@ -360,8 +368,7 @@ void lvd_initialize(int spiCLK, int spiMOSI, int spiMISO){
             x += x_velocity;
             y += y_velocity;
 
-            vTaskDelay(pdMS_TO_TICKS(2)); 
-             ESP_LOGI(TAG, "x: %d, y: %d, color: %d, i: %d", x, y, color,i );
+            vTaskDelay(pdMS_TO_TICKS(80)); 
         }
 
         if (color > 330) {

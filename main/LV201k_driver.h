@@ -17,6 +17,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_err.h"
+#include "esp_cache.h"
 #include <driver/spi_master.h>
 #include <driver/gpio.h>
 #include <driver/ledc.h>
